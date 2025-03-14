@@ -1,4 +1,14 @@
-# Kinokuniya Web App
+# IS215 Final Project - *Kinokuniya Web App*
+
+Made by Team 1.
+
+## Team Members
+
+* Astin Tay Wee Loon
+* Gabriel Ong Zhe Mian
+* Keith Tang Zi Heng
+* Nicholas Lam Zhan Teng
+* Nichole Bun Wen Xuan
 
 ## Stack
 
