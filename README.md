@@ -12,7 +12,10 @@ Made by IS215 G11 Team 1.
 
 ## Screenshot
 
-![](./chat.jpeg)
+<div style="display: flex; justify-content: space-between;">
+  <img src="https://github.com/user-attachments/assets/5daaeeaa-9093-40cf-b996-3d50a6d58444" width="48%">
+  <img src="https://github.com/user-attachments/assets/cc164af1-7b52-4fd6-84b9-eab37d55671d" width="48%">
+</div>
 
 ## Stack
 
