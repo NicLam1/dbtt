@@ -10,6 +10,13 @@ Made by Team 1.
 * Nicholas Lam Zhan Teng
 * Nichole Bun Wen Xuan
 
+## Screenshots 
+
+![]()
+![]()
+![]()
+![]()
+
 ## Stack
 
 * React
