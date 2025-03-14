@@ -1,4 +1,4 @@
-# IS215 Final Project - *Kinokuniya Web App*
+# IS215 Final Project - *Kinokuniya Timeless Conversations Web App*
 
 Made by IS215 G11 Team 1.
 
@@ -9,6 +9,10 @@ Made by IS215 G11 Team 1.
 * Keith Tang Zi Heng
 * Nicholas Lam Zhan Teng
 * Nichole Bun Wen Xuan
+
+## Screenshot
+
+![](./chat.jpeg)
 
 ## Stack
 
