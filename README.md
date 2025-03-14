@@ -10,18 +10,11 @@ Made by IS215 G11 Team 1.
 * Nicholas Lam Zhan Teng
 * Nichole Bun Wen Xuan
 
-## Screenshots 
-
-![]()
-![]()
-![]()
-![]()
-
 ## Stack
 
 * React
 * ChromaDB
-* FastAPI
+* GemeniAPI
 
 ## Architecture
 
@@ -32,6 +25,7 @@ sequenceDiagram
   actor User as Frontend User
   participant Frontend
   participant Backend
+  participant GeminiModel as Pretrained Gemini Model
   participant VectorDB as Remote Vector Database
   
   User->>Frontend: Enter prompt
@@ -42,7 +36,10 @@ sequenceDiagram
   activate VectorDB
   VectorDB-->>Backend: Return matching authors and content relationships
   deactivate VectorDB
-  Backend->>Backend: Compute cosine word similarity for tailored response
+  Backend->>GeminiModel: Call pretrained Gemini model for tailored response
+  activate GeminiModel
+  GeminiModel-->>Backend: Return author-tailored response
+  deactivate GeminiModel
   Backend-->>Frontend: Return author-tailored response
   deactivate Backend
   Frontend-->>User: Display response
