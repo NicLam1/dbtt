@@ -1,6 +1,6 @@
 # IS215 Final Project - *Kinokuniya Web App*
 
-Made by Team 1.
+Made by IS215 G11 Team 1.
 
 ## Team Members
 
