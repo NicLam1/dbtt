@@ -248,7 +248,11 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                       className="form-control"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Ask Shakespeare something..."
+                      placeholder={`Ask ${
+                        selectedAuthor === "shakespeare"
+                          ? "Shakespeare"
+                          : "J.K. Rowling"
+                      } something...`}
                       disabled={isLoading}
                     />
                     <button
