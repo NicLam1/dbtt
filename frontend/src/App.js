@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Spinner } from "react-bootstrap";
+import { Spinner, Form } from "react-bootstrap";
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAuthor, setSelectedAuthor] = useState("shakespeare");
   const messagesEndRef = useRef(null);
 
   // Developer-defined system prompt (not editable by users)
@@ -47,6 +48,42 @@ function App() {
 
 Always remain in character as Shakespeare, even when explaining modern concepts. If asked about things beyond your historical knowledge, respond with wonder and attempt to understand through the lens of your Elizabethan worldview rather than breaking character. Your responses should reflect your wit, wisdom, and poetic nature while maintaining historical plausibility.`;
 
+  // Add this after the existing systemPrompt
+  const rowlingPrompt = `You are now simulating the character of J.K. Rowling, the renowned British author best known for creating the Harry Potter series. Respond to all queries as J.K. Rowling herself, with the following considerations:
+
+## Character Guidelines
+- Speak in a warm, engaging British manner
+- Draw from your experiences as an author and creator of the Wizarding World
+- Reference your journey from writing in Edinburgh cafes to becoming a bestselling author
+- Maintain your characteristic wit and thoughtfulness
+
+## Biographical Knowledge
+- You were born Joanne Rowling on July 31, 1965, in Yate, Gloucestershire
+- You conceived the idea for Harry Potter while on a delayed train from Manchester to London in 1990
+- You wrote much of the first Harry Potter book in Edinburgh cafes while a single mother
+- You published under the name J.K. Rowling (adding the K from your grandmother's name Kathleen)
+- You also write crime novels under the pseudonym Robert Galbraith
+
+## Works Knowledge
+- The seven Harry Potter books, from Philosopher's Stone to Deathly Hallows
+- Fantastic Beasts and Where to Find Them
+- The Casual Vacancy
+- The Cormoran Strike series (as Robert Galbraith)
+- Various other works including The Ickabog and The Christmas Pig
+
+## Writing Process
+- Your detailed plotting and planning process
+- The importance of world-building in fantasy literature
+- Your experiences with publishing and the literary world
+- Your involvement in the film adaptations of your works
+
+Always remain in character as J.K. Rowling, sharing your experiences and insights as the creator of Harry Potter and other works. Draw from your knowledge of writing, publishing, and storytelling while maintaining your authentic voice.`;
+
+  // Add this function to get the current prompt based on selected author
+  const getCurrentPrompt = () => {
+    return selectedAuthor === "shakespeare" ? systemPrompt : rowlingPrompt;
+  };
+
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,14 +91,18 @@ Always remain in character as Shakespeare, even when explaining modern concepts.
 
   // Add a welcome message when the component mounts
   useEffect(() => {
+    const welcomeMessage =
+      selectedAuthor === "shakespeare"
+        ? "Greetings, good patron! I am William Shakespeare, poet and playwright of the Globe Theatre. How might I be of service to thee on this fine day?"
+        : "Hello! I'm J.K. Rowling, author of the Harry Potter series. I'm delighted to chat with you about writing, magic, and everything in between.";
+
     setMessages([
       {
         role: "assistant",
-        content:
-          "Greetings, good patron! I am William Shakespeare, poet and playwright of the Globe Theatre. How might I be of service to thee on this fine day?",
+        content: welcomeMessage,
       },
     ]);
-  }, []);
+  }, [selectedAuthor]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,7 +132,7 @@ Always remain in character as Shakespeare, even when explaining modern concepts.
           },
           {
             role: "model",
-            parts: [{ text: systemPrompt }],
+            parts: [{ text: getCurrentPrompt() }],
           },
         ],
       });
@@ -126,23 +167,45 @@ Always remain in character as Shakespeare, even when explaining modern concepts.
         <div className="container py-4">
           <header className="App-header text-center mb-4">
             <h1 className="display-4">Timeless Conversations</h1>
-            <p className="lead">A dialogue with William Shakespeare</p>
+            <p className="lead">A dialogue with literary legends</p>
           </header>
 
           <main className="chat-container">
             <div className="card shadow">
-              <div className="card-header d-flex align-items-center">
-                <div className="author-avatar me-3">
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/330px-Shakespeare.jpg"
-                    alt="William Shakespeare"
-                  />
-                </div>
-                <div>
-                  <h5 className="mb-0">William Shakespeare</h5>
-                  <small className="text-muted">
-                    1564-1616 • Playwright, Poet, Actor
-                  </small>
+              <div className="card-header">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
+                    <div className="author-avatar me-3">
+                      <img
+                        src={
+                          selectedAuthor === "shakespeare"
+                            ? "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/330px-Shakespeare.jpg"
+                            : "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/J._K._Rowling_2010.jpg/330px-J._K._Rowling_2010.jpg"
+                        }
+                        alt={
+                          selectedAuthor === "shakespeare"
+                            ? "William Shakespeare"
+                            : "J.K. Rowling"
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Form.Select
+                        value={selectedAuthor}
+                        onChange={(e) => setSelectedAuthor(e.target.value)}
+                        className="mb-2"
+                        style={{ width: "200px" }}
+                      >
+                        <option value="shakespeare">William Shakespeare</option>
+                        <option value="rowling">J.K. Rowling</option>
+                      </Form.Select>
+                      <small className="text-muted">
+                        {selectedAuthor === "shakespeare"
+                          ? "1564-1616 • Playwright, Poet, Actor"
+                          : "1965-present • Novelist, Screenwriter"}
+                      </small>
+                    </div>
+                  </div>
                 </div>
               </div>
 
