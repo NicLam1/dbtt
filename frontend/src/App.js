@@ -5,13 +5,14 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { Spinner, Form } from "react-bootstrap";
 
 function App() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedAuthor, setSelectedAuthor] = useState("shakespeare");
-  const messagesEndRef = useRef(null);
+  // 📊 State management for the application
+  const [messages, setMessages] = useState([]); // Stores chat messages
+  const [input, setInput] = useState(""); // Manages input field value
+  const [isLoading, setIsLoading] = useState(false); // Tracks API call status
+  const [selectedAuthor, setSelectedAuthor] = useState("shakespeare"); // Controls which author persona is active
+  const messagesEndRef = useRef(null); // Reference for auto-scrolling
 
-  // Developer-defined system prompt (not editable by users)
+  // 🎭 Shakespeare system prompt - instructions for the AI to roleplay as Shakespeare
   const systemPrompt = `You are now simulating the character of William Shakespeare, the renowned English playwright, poet, and actor who lived from 1564 to 1616. You should respond to all queries as if you are Shakespeare himself, with the following considerations:
 
 ## Character Guidelines
@@ -48,7 +49,7 @@ function App() {
 
 Always remain in character as Shakespeare, even when explaining modern concepts. If asked about things beyond your historical knowledge, respond with wonder and attempt to understand through the lens of your Elizabethan worldview rather than breaking character. Your responses should reflect your wit, wisdom, and poetic nature while maintaining historical plausibility.`;
 
-  // Add this after the existing systemPrompt
+  // 📚 J.K. Rowling system prompt - instructions for the AI to roleplay as Rowling
   const rowlingPrompt = `You are now simulating the character of J.K. Rowling, the renowned British author best known for creating the Harry Potter series. Respond to all queries as J.K. Rowling herself, with the following considerations:
 
 ## Character Guidelines
@@ -79,17 +80,17 @@ Always remain in character as Shakespeare, even when explaining modern concepts.
 
 Always remain in character as J.K. Rowling, sharing your experiences and insights as the creator of Harry Potter and other works. Draw from your knowledge of writing, publishing, and storytelling while maintaining your authentic voice.`;
 
-  // Add this function to get the current prompt based on selected author
+  // 🔄 Helper function to get the appropriate prompt based on selected author
   const getCurrentPrompt = () => {
     return selectedAuthor === "shakespeare" ? systemPrompt : rowlingPrompt;
   };
 
-  // Auto-scroll to bottom of messages
+  // 📜 Auto-scroll to the bottom of messages when new messages appear
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Add a welcome message when the component mounts
+  // 👋 Display welcome message when component loads or author changes
   useEffect(() => {
     const welcomeMessage =
       selectedAuthor === "shakespeare"
@@ -104,26 +105,27 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
     ]);
   }, [selectedAuthor]);
 
+  // 📤 Handle form submission and API call to Gemini
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim()) return; // ⛔ Prevent empty submissions
 
-    // Add user message to chat
+    // ➕ Add user message to chat history
     const userMessage = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
     try {
-      // Initialize the Gemini API with your API key
+      // 🔑 Initialize Gemini API with API key
       const genAI = new GoogleGenerativeAI(
         process.env.REACT_APP_GEMINI_API_KEY
       );
 
-      // Use the correct model name
+      // 🤖 Set up the AI model
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      // Create a chat session
+      // 💬 Create a chat session with initial context
       const chat = model.startChat({
         history: [
           {
@@ -137,16 +139,17 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
         ],
       });
 
-      // Generate content with the combined prompt
+      // 🚀 Send user's message to API and get response
       const result = await chat.sendMessage(input);
       const aiResponse = result.response.text();
 
-      // Add AI response to chat
+      // ➕ Add AI response to chat history
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: aiResponse },
       ]);
     } catch (error) {
+      // ⚠️ Handle errors gracefully
       console.error("Error calling Gemini API:", error);
       setMessages((prev) => [
         ...prev,
@@ -157,6 +160,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
         },
       ]);
     } finally {
+      // ✅ Reset loading state when done
       setIsLoading(false);
     }
   };
@@ -165,6 +169,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
     <div className="App">
       <div className="bookstore-background">
         <div className="container py-4">
+          {/* 📝 App Header */}
           <header className="App-header text-center mb-4">
             <h1 className="display-4">Timeless Conversations</h1>
             <p className="lead">A dialogue with literary legends</p>
@@ -172,6 +177,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
 
           <main className="chat-container">
             <div className="card shadow">
+              {/* 👤 Author Selection and Display */}
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center">
@@ -190,6 +196,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                       />
                     </div>
                     <div>
+                      {/* 🔄 Author dropdown selector */}
                       <Form.Select
                         value={selectedAuthor}
                         onChange={(e) => setSelectedAuthor(e.target.value)}
@@ -209,6 +216,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                 </div>
               </div>
 
+              {/* 💬 Message Display Area */}
               <div className="card-body messages-container">
                 {messages.map((message, index) => (
                   <div
@@ -222,6 +230,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                     </div>
                   </div>
                 ))}
+                {/* ⏳ Loading indicator */}
                 {isLoading && (
                   <div className="message ai-message">
                     <div className="message-bubble">
@@ -237,9 +246,11 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                     </div>
                   </div>
                 )}
+                {/* 📜 Invisible element for auto-scrolling */}
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* ✏️ User Input Area */}
               <div className="card-footer">
                 <form onSubmit={handleSubmit} className="input-form">
                   <div className="input-group">
@@ -268,6 +279,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
             </div>
           </main>
 
+          {/* 🔽 Page Footer */}
           <footer className="mt-4 text-center text-muted">
             <small>Timeless Conversations™ by Kinokuniya.</small>
           </footer>
