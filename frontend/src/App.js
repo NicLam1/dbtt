@@ -402,7 +402,7 @@ Always remain in character as Dr. Fiona Nah, reflecting your academic expertise 
 
   return (
     <div className="App">
-      <div className="bookstore-background">
+      <div className="modern-background">
         <div className="container py-4">
           {/* 📝 App Header */}
           <header className="App-header text-center mb-4">
