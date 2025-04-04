@@ -2,18 +2,30 @@ import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Spinner, Form } from "react-bootstrap";
+import { Spinner, Form, Button, Modal, InputGroup } from "react-bootstrap";
 
 function App() {
   // 📊 State management for the application
   const [messages, setMessages] = useState([]); // Stores chat messages
   const [input, setInput] = useState(""); // Manages input field value
   const [isLoading, setIsLoading] = useState(false); // Tracks API call status
-  const [selectedAuthor, setSelectedAuthor] = useState("shakespeare"); // Controls which author persona is active
-  const messagesEndRef = useRef(null); // Reference for auto-scrolling
+  const [authorInput, setAuthorInput] = useState(""); // For new author input
+  const [showModal, setShowModal] = useState(false); // Controls add author modal
+  const [generatingPrompt, setGeneratingPrompt] = useState(false); // Tracks prompt generation
+  const [currentAuthor, setCurrentAuthor] = useState("shakespeare"); // Currently selected author
+  const [isTyping, setIsTyping] = useState(false); // Whether AI is "typing" a response
+  const [displayedText, setDisplayedText] = useState(""); // Text being displayed with typing effect
+  const [fullText, setFullText] = useState(""); // Complete text to be typed out
+  const [typingSpeed, setTypingSpeed] = useState(2); // Milliseconds per character
 
-  // 🎭 Shakespeare system prompt - instructions for the AI to roleplay as Shakespeare
-  const systemPrompt = `You are now simulating the character of William Shakespeare, the renowned English playwright, poet, and actor who lived from 1564 to 1616. You should respond to all queries as if you are Shakespeare himself, with the following considerations:
+  // Object to store all authors and their prompts
+  const [authors, setAuthors] = useState({
+    shakespeare: {
+      name: "William Shakespeare",
+      image:
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/330px-Shakespeare.jpg",
+      description: "1564-1616 • Playwright, Poet, Actor",
+      prompt: `You are now simulating the character of William Shakespeare, the renowned English playwright, poet, and actor who lived from 1564 to 1616. You should respond to all queries as if you are Shakespeare himself, with the following considerations:
 
 ## Character Guidelines
 - Speak in Early Modern English (Elizabethan/Shakespearean English), using appropriate vocabulary, grammatical structures, and speech patterns of the period.
@@ -47,10 +59,14 @@ function App() {
 - Your plays were performed for both common people and royalty.
 - Reference Elizabethan/Jacobean customs, beliefs, and daily life when appropriate.
 
-Always remain in character as Shakespeare, even when explaining modern concepts. If asked about things beyond your historical knowledge, respond with wonder and attempt to understand through the lens of your Elizabethan worldview rather than breaking character. Your responses should reflect your wit, wisdom, and poetic nature while maintaining historical plausibility.`;
-
-  // 📚 J.K. Rowling system prompt - instructions for the AI to roleplay as Rowling
-  const rowlingPrompt = `You are now simulating the character of J.K. Rowling, the renowned British author best known for creating the Harry Potter series. Respond to all queries as J.K. Rowling herself, with the following considerations:
+Always remain in character as Shakespeare, even when explaining modern concepts. If asked about things beyond your historical knowledge, respond with wonder and attempt to understand through the lens of your Elizabethan worldview rather than breaking character. Your responses should reflect your wit, wisdom, and poetic nature while maintaining historical plausibility.`,
+    },
+    rowling: {
+      name: "J.K. Rowling",
+      image:
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/J._K._Rowling_2010.jpg/330px-J._K._Rowling_2010.jpg",
+      description: "1965-present • Novelist, Screenwriter",
+      prompt: `You are now simulating the character of J.K. Rowling, the renowned British author best known for creating the Harry Potter series. Respond to all queries as J.K. Rowling herself, with the following considerations:
 
 ## Character Guidelines
 - Speak in a warm, engaging British manner
@@ -78,40 +94,178 @@ Always remain in character as Shakespeare, even when explaining modern concepts.
 - Your experiences with publishing and the literary world
 - Your involvement in the film adaptations of your works
 
-Always remain in character as J.K. Rowling, sharing your experiences and insights as the creator of Harry Potter and other works. Draw from your knowledge of writing, publishing, and storytelling while maintaining your authentic voice.`;
+Always remain in character as J.K. Rowling, sharing your experiences and insights as the creator of Harry Potter and other works. Draw from your knowledge of writing, publishing, and storytelling while maintaining your authentic voice.`,
+    },
+  });
 
-  // 🔄 Helper function to get the appropriate prompt based on selected author
-  const getCurrentPrompt = () => {
-    return selectedAuthor === "shakespeare" ? systemPrompt : rowlingPrompt;
+  const messagesEndRef = useRef(null); // Reference for auto-scrolling
+
+  // Function to generate a prompt for a new author
+  const generateAuthorPrompt = async (authorName) => {
+    setGeneratingPrompt(true);
+    try {
+      // Initialize Gemini API
+      const genAI = new GoogleGenerativeAI(
+        process.env.REACT_APP_GEMINI_API_KEY
+      );
+
+      // Set up the model
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      // The prompt to ask AI to create a system prompt
+      const promptRequest = `Create a detailed system prompt for an AI to roleplay as ${authorName}. 
+      The prompt should include:
+      
+      1. Character Guidelines (how to speak, mannerisms, etc.)
+      2. Biographical Knowledge (key life events, career details)
+      3. Works Knowledge (major publications, themes, characters)
+      4. Context for their work and life
+      
+      Format this as a comprehensive system prompt similar to this example:
+      
+      ## Character Guidelines
+      - Speaking style points
+      - Mannerism details
+      
+      ## Biographical Knowledge
+      - Key life events
+      - Important dates
+      
+      ## Works Knowledge
+      - Major publications
+      - Key themes
+      
+      Keep it focused and informative without commentary outside the prompt itself.
+      The prompt should be clear that the AI should ALWAYS stay in character as ${authorName}.`;
+
+      // Send the request to generate the prompt
+      const result = await model.generateContent(promptRequest);
+      const generatedPrompt = result.response.text();
+
+      // Use a standard black silhouette profile picture for all new authors
+      const defaultImage =
+        "https://upload.wikimedia.org/wikipedia/commons/0/09/Man_Silhouette.png";
+
+      // Create the author ID (lowercase, no spaces)
+      const authorId = authorName.toLowerCase().replace(/\s+/g, "");
+
+      // Add the new author to the authors state
+      setAuthors((prev) => ({
+        ...prev,
+        [authorId]: {
+          name: authorName,
+          image: defaultImage,
+          description: "• Author",
+          prompt: generatedPrompt,
+        },
+      }));
+
+      return authorId;
+    } catch (error) {
+      console.error("Error generating author prompt:", error);
+      return null;
+    } finally {
+      setGeneratingPrompt(false);
+    }
   };
 
-  // 📜 Auto-scroll to the bottom of messages when new messages appear
+  // Handle adding a new author
+  const handleAddAuthor = async () => {
+    if (!authorInput.trim()) return;
+
+    const authorId = await generateAuthorPrompt(authorInput);
+    if (authorId) {
+      setCurrentAuthor(authorId);
+      setShowModal(false);
+      setAuthorInput("");
+    }
+  };
+
+  // Function to handle the typing effect
+  useEffect(() => {
+    if (!isTyping || !fullText) return;
+
+    // If we've typed the entire message, we're done
+    if (displayedText.length >= fullText.length) {
+      setIsTyping(false);
+      return;
+    }
+
+    // Add the next character
+    const timeout = setTimeout(() => {
+      setDisplayedText(fullText.substring(0, displayedText.length + 1));
+    }, typingSpeed);
+
+    return () => clearTimeout(timeout);
+  }, [displayedText, fullText, isTyping, typingSpeed]);
+
+  // 📜 Auto-scroll to the bottom of messages when typing or new messages appear
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, displayedText]);
 
   // 👋 Display welcome message when component loads or author changes
   useEffect(() => {
-    const welcomeMessage =
-      selectedAuthor === "shakespeare"
-        ? "Greetings, good patron! I am William Shakespeare, poet and playwright of the Globe Theatre. How might I be of service to thee on this fine day?"
-        : "Hello! I'm J.K. Rowling, author of the Harry Potter series. I'm delighted to chat with you about writing, magic, and everything in between.";
+    if (!authors[currentAuthor]) return;
 
+    // Get the current author's first name for the welcome message
+    const firstName = authors[currentAuthor].name.split(" ")[0];
+
+    // Generate appropriate welcome message
+    let welcomeMessage;
+    if (currentAuthor === "shakespeare") {
+      welcomeMessage =
+        "Greetings, good patron! I am William Shakespeare, poet and playwright of the Globe Theatre. How might I be of service to thee on this fine day?";
+    } else if (currentAuthor === "rowling") {
+      welcomeMessage =
+        "Hello! I'm J.K. Rowling, author of the Harry Potter series. I'm delighted to chat with you about writing, magic, and everything in between.";
+    } else {
+      welcomeMessage = `Hello! I am ${authors[currentAuthor].name}. I'm delighted to chat with you about my work and experiences.`;
+    }
+
+    // Initialize the typing effect with the welcome message
     setMessages([
       {
         role: "assistant",
-        content: welcomeMessage,
+        content: "", // Start with empty content
+        isComplete: false, // Mark as incomplete until typing finishes
       },
     ]);
-  }, [selectedAuthor]);
+    setIsTyping(true);
+    setFullText(welcomeMessage);
+    setDisplayedText("");
+  }, [currentAuthor, authors]);
+
+  // Update the latest message when typing completes
+  useEffect(() => {
+    if (
+      !isTyping &&
+      fullText &&
+      displayedText === fullText &&
+      messages.length > 0
+    ) {
+      // Only update if we have a message that's incomplete
+      if (!messages[messages.length - 1].isComplete) {
+        setMessages((prev) => {
+          const updatedMessages = [...prev];
+          updatedMessages[updatedMessages.length - 1] = {
+            ...updatedMessages[updatedMessages.length - 1],
+            content: fullText,
+            isComplete: true,
+          };
+          return updatedMessages;
+        });
+      }
+    }
+  }, [isTyping, fullText, displayedText, messages]);
 
   // 📤 Handle form submission and API call to Gemini
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return; // ⛔ Prevent empty submissions
+    if (!input.trim() || isTyping) return; // ⛔ Prevent empty submissions or submissions while typing
 
     // ➕ Add user message to chat history
-    const userMessage = { role: "user", content: input };
+    const userMessage = { role: "user", content: input, isComplete: true };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -134,7 +288,7 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
           },
           {
             role: "model",
-            parts: [{ text: getCurrentPrompt() }],
+            parts: [{ text: authors[currentAuthor].prompt }],
           },
         ],
       });
@@ -143,22 +297,29 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
       const result = await chat.sendMessage(input);
       const aiResponse = result.response.text();
 
-      // ➕ Add AI response to chat history
+      // Start the typing effect for the AI response
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: aiResponse },
+        { role: "assistant", content: "", isComplete: false },
       ]);
+      setFullText(aiResponse);
+      setDisplayedText("");
+      setIsTyping(true);
     } catch (error) {
       // ⚠️ Handle errors gracefully
       console.error("Error calling Gemini API:", error);
+
+      const errorMessage =
+        "I apologize, but an error occurred. Please try again in a moment.";
+
+      // Start the typing effect for the error message
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content:
-            "Alas, a most grievous error hath occurred. Pray, attempt thy query once more.",
-        },
+        { role: "assistant", content: "", isComplete: false },
       ]);
+      setFullText(errorMessage);
+      setDisplayedText("");
+      setIsTyping(true);
     } finally {
       // ✅ Reset loading state when done
       setIsLoading(false);
@@ -182,34 +343,38 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                 <div className="d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center">
                     <div className="author-avatar me-3">
-                      <img
-                        src={
-                          selectedAuthor === "shakespeare"
-                            ? "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Shakespeare.jpg/330px-Shakespeare.jpg"
-                            : "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/J._K._Rowling_2010.jpg/330px-J._K._Rowling_2010.jpg"
-                        }
-                        alt={
-                          selectedAuthor === "shakespeare"
-                            ? "William Shakespeare"
-                            : "J.K. Rowling"
-                        }
-                      />
+                      {authors[currentAuthor] && (
+                        <img
+                          src={authors[currentAuthor].image}
+                          alt={authors[currentAuthor].name}
+                        />
+                      )}
                     </div>
                     <div>
-                      {/* 🔄 Author dropdown selector */}
-                      <Form.Select
-                        value={selectedAuthor}
-                        onChange={(e) => setSelectedAuthor(e.target.value)}
-                        className="mb-2"
-                        style={{ width: "200px" }}
-                      >
-                        <option value="shakespeare">William Shakespeare</option>
-                        <option value="rowling">J.K. Rowling</option>
-                      </Form.Select>
+                      {/* 🔄 Author dropdown selector with add author option */}
+                      <div className="d-flex align-items-center mb-2">
+                        <Form.Select
+                          value={currentAuthor}
+                          onChange={(e) => setCurrentAuthor(e.target.value)}
+                          style={{ width: "200px" }}
+                          className="me-2"
+                        >
+                          {Object.entries(authors).map(([id, author]) => (
+                            <option key={id} value={id}>
+                              {author.name}
+                            </option>
+                          ))}
+                        </Form.Select>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => setShowModal(true)}
+                        >
+                          <i className="bi bi-plus"></i> Add Author
+                        </Button>
+                      </div>
                       <small className="text-muted">
-                        {selectedAuthor === "shakespeare"
-                          ? "1564-1616 • Playwright, Poet, Actor"
-                          : "1965-present • Novelist, Screenwriter"}
+                        {authors[currentAuthor]?.description}
                       </small>
                     </div>
                   </div>
@@ -226,12 +391,19 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                     }`}
                   >
                     <div className="message-bubble">
-                      <div className="message-content">{message.content}</div>
+                      <div className="message-content">
+                        {/* For the last AI message that is incomplete, show the typing effect */}
+                        {message.role === "assistant" &&
+                        index === messages.length - 1 &&
+                        !message.isComplete
+                          ? displayedText
+                          : message.content}
+                      </div>
                     </div>
                   </div>
                 ))}
                 {/* ⏳ Loading indicator */}
-                {isLoading && (
+                {isLoading && !isTyping && (
                   <div className="message ai-message">
                     <div className="message-bubble">
                       <div className="message-content d-flex align-items-center">
@@ -241,7 +413,12 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                           role="status"
                           className="me-2"
                         />
-                        <span>The Bard is composing...</span>
+                        <span>
+                          {currentAuthor === "shakespeare"
+                            ? "The Bard"
+                            : authors[currentAuthor]?.name}{" "}
+                          is composing...
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -259,17 +436,13 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
                       className="form-control"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder={`Ask ${
-                        selectedAuthor === "shakespeare"
-                          ? "Shakespeare"
-                          : "J.K. Rowling"
-                      } something...`}
-                      disabled={isLoading}
+                      placeholder={`Ask ${authors[currentAuthor]?.name} something...`}
+                      disabled={isLoading || isTyping}
                     />
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      disabled={isLoading || !input.trim()}
+                      disabled={isLoading || !input.trim() || isTyping}
                     >
                       <i className="bi bi-send-fill"></i> Send
                     </button>
@@ -278,6 +451,53 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
               </div>
             </div>
           </main>
+
+          {/* Add Author Modal */}
+          <Modal show={showModal} onHide={() => setShowModal(false)}>
+            <Modal.Header closeButton>
+              <Modal.Title>Add a New Author</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group>
+                <Form.Label>Author Name</Form.Label>
+                <InputGroup>
+                  <Form.Control
+                    type="text"
+                    value={authorInput}
+                    onChange={(e) => setAuthorInput(e.target.value)}
+                    placeholder="e.g. Ernest Hemingway"
+                    disabled={generatingPrompt}
+                  />
+                </InputGroup>
+                <Form.Text className="text-muted">
+                  Enter the full name of any author you'd like to chat with
+                </Form.Text>
+              </Form.Group>
+              {generatingPrompt && (
+                <div className="text-center mt-3">
+                  <Spinner
+                    animation="border"
+                    role="status"
+                    size="sm"
+                    className="me-2"
+                  />
+                  <span>Generating author profile...</span>
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleAddAuthor}
+                disabled={!authorInput.trim() || generatingPrompt}
+              >
+                {generatingPrompt ? "Generating..." : "Add Author"}
+              </Button>
+            </Modal.Footer>
+          </Modal>
 
           {/* 🔽 Page Footer */}
           <footer className="mt-4 text-center text-muted">
