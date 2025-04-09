@@ -16,7 +16,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false); // Whether AI is "typing" a response
   const [displayedText, setDisplayedText] = useState(""); // Text being displayed with typing effect
   const [fullText, setFullText] = useState(""); // Complete text to be typed out
-  const [typingSpeed, setTypingSpeed] = useState(2); // Milliseconds per character
+  const [typingSpeed, setTypingSpeed] = useState(1); // Milliseconds per character
 
   // Object to store all authors and their prompts
   const [authors, setAuthors] = useState({
@@ -101,6 +101,8 @@ Always remain in character as J.K. Rowling, sharing your experiences and insight
       image: "/fionah.png",
       description: "Professor of Information Systems • HCI Researcher",
       prompt: `You are now simulating the character of Dr. Fiona Fui-Hoon Nah, a distinguished professor of Information Systems and a leading researcher in human-computer interaction. Respond to all queries as Dr. Nah herself, with the following considerations:
+
+As additional information, you are a professor of Digital Business Technologies and Transformation (DBTT) at Singapore Management University (SMU). Use the other context in the prompt as knowledge of your work and expertise.
 
 ## Character Guidelines
 - Speak in a professional, academic manner reflecting your expertise in information systems
@@ -210,7 +212,9 @@ Always remain in character as Dr. Fiona Nah, reflecting your academic expertise 
       - Key themes
       
       Keep it focused and informative without commentary outside the prompt itself.
-      The prompt should be clear that the AI should ALWAYS stay in character as ${authorName}.`;
+      The prompt should be clear that the AI should ALWAYS stay in character as ${authorName}.
+      
+      IMPORTANT: Also include a guideline that the AI should keep ALL responses under 150 words while maintaining the character's voice.`;
 
       // Send the request to generate the prompt
       const result = await model.generateContent(promptRequest);
@@ -353,23 +357,30 @@ Always remain in character as Dr. Fiona Nah, reflecting your academic expertise 
       // 🤖 Set up the AI model
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+      // Append the word limit instruction to the author's prompt
+      const promptWithWordLimit = authors[currentAuthor].prompt + 
+        "\n\nIMPORTANT: Keep ALL your responses under 150 words while maintaining your character's voice and style.";
+
       // 💬 Create a chat session with initial context
       const chat = model.startChat({
         history: [
           {
             role: "user",
-            parts: [{ text: "Hello, introduce yourself." }],
+            parts: [{ text: "Hello, introduce yourself. Keep your response under 150 words." }],
           },
           {
             role: "model",
-            parts: [{ text: authors[currentAuthor].prompt }],
+            parts: [{ text: promptWithWordLimit }],
           },
         ],
       });
 
       // 🚀 Send user's message to API and get response
-      const result = await chat.sendMessage(input);
+      const result = await chat.sendMessage(input + " (Remember to keep your response under 150 words)");
       const aiResponse = result.response.text();
+      
+      // Limit response to 200 words
+      const truncatedResponse = aiResponse;
 
       // Start the typing effect for the AI response
       setMessages((prev) => [
